@@ -1,0 +1,397 @@
+# Tanishka Vijay, 21048, Creating an app for the yr 13 physics students to help them keep track of thier assessments
+# Prototype 1
+# Includes:
+#   Login/registration page
+#   Page to view assessments (as home page)
+#   Page to add assessments
+#   Navigation Menu
+
+import os
+import tkinter as tk
+from tkinter import ttk, messagebox
+from tkcalendar import DateEntry
+
+# Standard details dictionary
+standard_details = {
+    "91521": {"Name": "Carry out a practical investigation to test a physics theory relating two variables in a non-linear relationship",
+               "Credits": 4,
+               "Type": "Internal"},
+    "91522": {"Name": "Demonstrate understanding of the application of physics to a selected context",
+               "Credits": 3,
+               "Type": "Internal"},
+    "91523": {"Name": "Demonstrate understanding of wave systems", 
+              "Credits": 4, 
+              "Type": "External"},
+    "91524": {"Name": "Demonstrate understanding of mechanical systems", 
+              "Credits": 6, 
+              "Type": "External"},
+    "91525": {"Name": "Demonstrate understanding of modern physics", 
+              "Credits": 3, 
+              "Type": "Internal"},
+    "91526": {"Name": "Demonstrate understanding of electrical systems", 
+              "Credits": 6, 
+              "Type": "External"},
+    "91527": {"Name": "Use physics knowledge to develop an informed response to a socio-scientific issue", 
+              "Credits": 3, 
+              "Type": "Internal"},
+}
+
+# Stores assessment data as dictionary
+assessments_list = []  
+# Variable to log in an existing user
+logged_in_user = None  
+# Variable to open and close menu
+toggle_menu = None
+
+# Function to register a new user
+def register():
+    # Register a new user by writing username and password to a file
+    username = entry_username.get()
+    password = entry_password.get()
+
+    # Check if the user already exists
+    if os.path.exists('users.txt'):
+        with open('users.txt', 'r') as file:
+            users = file.readlines()
+            for user in users:
+                stored_username, _ = user.split(',')
+                if stored_username.strip() == username:
+                    messagebox.showwarning("Registration Failed", "Username already exists!")
+                    return
+    # Save new user to seperate file
+    with open('users.txt', 'a') as file:
+        file.write(f"{username},{password}\n")
+
+    messagebox.showinfo("Registration Success", "Registration successful! You can now log in.")
+
+# Function to log in an existing user
+def login():
+    # Validate credentials and log in the user
+    global logged_in_user, assessments_list
+    username = entry_username.get()
+    password = entry_password.get()
+
+    if not os.path.exists('users.txt'):
+        messagebox.showerror("Login Failed", "No users registered yet.")
+        return
+
+    with open('users.txt', 'r') as file:
+        users = file.readlines()
+        for user in users:
+            stored_username, stored_password = user.strip().split(',')
+            if stored_username == username and stored_password == password:
+                logged_in_user = username  # Saves logged-in user
+                messagebox.showinfo("Login Success", "Login successful!")
+                load_user_assessments()  # Loads user's assessments
+                show_assessment_page()
+                return
+
+    messagebox.showerror("Login Failed", "Invalid username or password.")
+
+# Load assessments from file for the logged-in user
+def load_user_assessments():
+    global assessments_list
+    assessments_list = []  # Clear previous data
+    user_file = f"{logged_in_user}_assessments.txt"
+    
+    if os.path.exists(user_file):
+        with open(user_file, "r") as file:
+            for line in file:
+                as_number, as_name, as_credits, as_type, due_date, test_type = line.strip().split('|')
+                assessments_list.append({
+                    "AS Number": as_number,
+                    "Name": as_name,
+                    "Credits": as_credits,
+                    "Type": as_type,
+                    "Due Date": due_date,
+                    "Test Type": test_type
+                })
+
+# Save user assessments to file
+def save_user_assessments():
+    # Save the logged-in user's assessments to their file
+    if not logged_in_user:
+        return
+
+    user_file = f"{logged_in_user}_assessments.txt"
+    with open(user_file, "w") as file:
+        for assessment in assessments_list:
+            file.write(f'{assessment["AS Number"]}|{assessment["Name"]}|{assessment["Credits"]}|{assessment["Type"]}|{assessment["Due Date"]}|{assessment["Test Type"]}\n')
+
+# Create the login and registration form
+def create_login_frame():
+    # Creates login and registration entry fields and buttons
+    global entry_username, entry_password, login_frame
+
+    login_frame = tk.Frame(root)
+    login_frame.pack(expand=True)
+    # creating space for username 
+    label_username = tk.Label(login_frame, text="Username:")
+    label_username.pack()
+    # creating space for username entry
+    entry_username = tk.Entry(login_frame)
+    entry_username.pack(pady=10)
+    # creating space for password
+    label_password = tk.Label(login_frame, text="Password:")
+    label_password.pack()
+    # creating space for password entry
+    entry_password = tk.Entry(login_frame, show="*")
+    entry_password.pack(pady=10)
+
+# adding button for login
+    btn_login = tk.Button(login_frame, text="Login", command=login)
+    btn_login.pack(pady=5)
+# adding button for registering
+    btn_register = tk.Button(login_frame, text="Register", command=register)
+    btn_register.pack(pady=5)
+
+# Function to create the assessment page frame
+def show_assessment_page():
+    # Show the list of assessments in a treeview
+    global assessment_frame
+
+    # Destroy any existing frame
+    for widget in root.winfo_children():
+        if isinstance(widget, tk.Frame):
+            widget.destroy()
+
+    login_frame.pack_forget()
+
+    side_bar()  # Display the sidebar
+
+    assessment_frame = tk.Frame(root)
+    assessment_frame.pack(expand=True)
+
+    label_welcome = tk.Label(assessment_frame, text="Assessments List", font=("Arial", 16))
+    label_welcome.pack(pady=10)
+
+    # Table Headers
+    columns = ("AS Number", "Name", "Credits", "Type", "Due Date", "Test Type")
+    tree = ttk.Treeview(assessment_frame, columns=columns, show="headings")
+
+    for col in columns:
+        tree.heading(col, text=col)
+        tree.column(col, anchor="center")
+
+    # Insert saved assessments
+    for assessment in assessments_list:
+        tree.insert("", "end", values=(
+            assessment["AS Number"],
+            assessment["Name"],
+            assessment["Credits"],
+            assessment["Type"],
+            assessment["Due Date"],
+            assessment["Test Type"]
+        ))
+
+    tree.pack(pady=10, fill="both", expand=True)
+
+    btn_logout = tk.Button(assessment_frame, text="Logout", command=logout)
+    btn_logout.pack(pady=10)
+
+    btn_new_assessment = tk.Button(assessment_frame, text="New Assessment", command=new_assessment)
+    btn_new_assessment.pack(pady=10)
+
+# Function to create the new assessment page
+def new_assessment():
+    global new_assessment_frame
+
+    assessment_frame.pack_forget()
+    # Destroy any existing frame
+    for widget in root.winfo_children():
+        if isinstance(widget, tk.Frame):
+            widget.destroy()
+
+    side_bar() # Show the sidebar menu
+    new_assessment_frame = tk.Frame(root)
+    new_assessment_frame.pack(expand=True)
+
+    label_welcome = tk.Label(new_assessment_frame, text="Enter New Assessment", font=("Arial", 16))
+    label_welcome.pack(pady=20)
+
+    # Dropdown for Assessment number selection
+    tk.Label(new_assessment_frame, text="AS Number:").pack(pady=5)
+    number_var = tk.StringVar()
+    number_dropdown = ttk.Combobox(new_assessment_frame, textvariable=number_var, values=list(standard_details.keys()), state="readonly")
+    number_dropdown.set("Select AS Number")
+    number_dropdown.pack(pady=5)
+
+    number_dropdown.bind("<<ComboboxSelected>>", lambda event: update_categories(event, number_var))
+
+    # Auto-filled Fields for Name, Type, and Credits
+    tk.Label(new_assessment_frame, text="Name:").pack(pady=5)
+    global name_var
+    name_var = tk.StringVar()
+    name_entry = tk.Entry(new_assessment_frame, textvariable=name_var, state="readonly", width=False)
+    name_entry.pack(pady=5)
+
+    # Auto-filled Fields for AS Name, Type, and Credits
+    tk.Label(new_assessment_frame, text="Type:").pack(pady=5)
+    global type_var
+    type_var = tk.StringVar()
+    type_entry = tk.Entry(new_assessment_frame, textvariable=type_var, state="readonly")
+    type_entry.pack(pady=5)
+
+    tk.Label(new_assessment_frame, text="Credits:").pack(pady=5)
+    global credits_var
+    credits_var = tk.StringVar()
+    credit_entry = tk.Entry(new_assessment_frame, textvariable=credits_var, state="readonly")
+    credit_entry.pack(pady=5)
+     
+    # allow user to add a due date
+    tk.Label(new_assessment_frame, text="Due Date:").pack(pady=5)
+    global due_date_var
+    due_date_var = tk.StringVar()
+    due_date_entry = DateEntry(new_assessment_frame, textvariable=due_date_var, date_pattern='dd-mm-yyyy')  # Calendar Picker
+    due_date_entry.pack(pady=5)
+
+    tk.Label(new_assessment_frame, text="Test Type:").pack(pady=5)
+    test_var = tk.StringVar(value="Test")
+    radio_written = tk.Radiobutton(new_assessment_frame, text="Test", variable=test_var, value="Test")
+    radio_written.pack(side=tk.LEFT, padx=10)
+
+    radio_practical = tk.Radiobutton(new_assessment_frame, text="Essay", variable=test_var, value="Essay")
+    radio_practical.pack(side=tk.LEFT, padx=10)
+
+    # Submit Button
+    submit_button = tk.Button(new_assessment_frame, text="Submit", command=lambda: add_assessment(number_var, name_var, credits_var, type_var, test_var))
+    submit_button.pack(side=tk.BOTTOM, pady=20)
+
+# Function to show menu when button is pressed
+def page_menu():
+
+    # Function to collapse menu when button is pressed while it is open
+    def collapse_menu():
+        global toggle_menu
+        toggle_menu.place_forget()  # Hide the sidebar
+        toggle_button.config(text='☰')  # Change button text to open
+        toggle_button.config(command=expand_menu)  # Set the command to expand the menu again
+
+    # Function to expand the menu
+    def expand_menu():
+        global toggle_menu
+        # Check if sidebar is already created (so it doesn't recreate it)
+        if toggle_menu is None:
+            toggle_menu = tk.Frame(root, bg='red')
+        # Create actual menu that will appear when pressed
+        toggle_menu = tk.Frame(root, bg='red')
+
+        # Create buttons for pages
+        main_btn = tk.Button(toggle_menu, text='Home', font=('Bold', 20), bg='red', fg='white', command=show_assessment_page, relief="flat")
+        main_btn.place(x=20, y=20)
+        
+        as_btn = tk.Button(toggle_menu, text='New Assessment', font=('Bold', 20), bg='red', fg='white', command=new_assessment, relief="flat")
+        as_btn.place(x=20, y=140)
+
+        window_height = root.winfo_height()  # Get height of window
+        window_width = root.winfo_width()    # Get width of window
+        toggle_menu.place(x=0, y=50, height=window_height, width=window_width * 0.25)
+
+        # Change menu button to X to show exit function
+        toggle_button.config(text="X")
+        toggle_button.config(command=collapse_menu)  # Set command to collapse menu
+
+    # If menu is already collapsed, expand it
+    expand_menu()
+    toggle_button.config(command=collapse_menu)
+
+# Function to create the sidebar
+def side_bar():
+    
+    global toggle_button
+
+    # designing the frame
+    head_frame = tk.Frame(root, bg='red', highlightbackground='white', highlightthickness=10)
+
+    # button to click to activate sidebar
+    toggle_button = tk.Button(head_frame, text='☰', fg="white", bg="red", font=20, command=page_menu)
+    toggle_button.pack(side=tk.LEFT)
+   
+    # position of frame
+    head_frame.pack(side=tk.TOP, fill=tk.X)
+    head_frame.pack_propagate(False)
+   
+    # fixing how tall the side bar should be
+    head_frame.configure(height=50)
+
+# Function to auto-fill details based on selection
+def update_categories(event, number_var):
+    selected_standard = number_var.get()
+    
+    if selected_standard in standard_details:
+        details = standard_details[selected_standard]
+        name_var.set(details["Name"])
+        credits_var.set(details["Credits"])
+        type_var.set(details["Type"])
+    else:
+        name_var.set("")
+        credits_var.set("")
+        type_var.set("")
+
+# Function to handle form submission
+def add_assessment(number_var, name_var, credits_var,type_var, test_var):
+    global assessments_list
+
+    as_number = number_var.get()
+    as_name = name_var.get()
+    as_credits = credits_var.get()
+    as_type = type_var.get()
+    due_date = due_date_var.get()
+    test_type = test_var.get()
+    
+    if not as_number or not as_name or not due_date or not test_type:
+        messagebox.showwarning("Input Error", "Please find your assessment first")
+        return
+
+    updated = False
+
+    # Check if AS Number already exists
+    for assessment in assessments_list:
+        if assessment["AS Number"] == as_number:
+            update = messagebox.askyesno("Update Assessment", "This assessment already exists! Do you want to update the due date and test type?")
+            if update:
+                assessment["Due Date"] = due_date
+                assessment["Test Type"] = test_type
+                updated = True  
+            break  
+
+    if not updated:
+        assessments_list.append({
+            "AS Number": as_number,
+            "Name": as_name,
+            "Credits": as_credits,
+            "Type": as_type,
+            "Due Date": due_date,
+            "Test Type": test_type
+        })
+
+    save_user_assessments()  # Save to file
+    messagebox.showinfo("Success", "Assessment saved!")
+    show_assessment_page()    
+
+# Function to handle logout and return to the login page
+def logout():
+    for widget in root.winfo_children():
+        widget.destroy()
+
+    create_login_frame()
+
+# Function to allow escape from the window
+def toggle_fullscreen(event=None):
+    is_fullscreen = root.attributes('-fullscreen')
+    root.attributes('-fullscreen', not is_fullscreen)
+
+
+# Main window setup
+root = tk.Tk()
+root.title("Assessment Manager App")
+# Make window full-screen
+root.attributes('-fullscreen', True)
+# Bind the Escape key to toggle fullscreen mode
+root.bind("<Escape>", toggle_fullscreen)
+
+# Create the login page frame initially
+create_login_frame()
+
+# Start the Tkinter event loop
+root.mainloop()
