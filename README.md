@@ -1,5 +1,9 @@
 # Assessment-tracker-application
+Tanishka Vijay
+21048
+AS91907
 L3DTEC DTO Submission
+
 This is an app made for Year 13 Physics students to help keep track with their assessments
 
 *Need an app that supports python coding to run code i.e Visual Studio Code
